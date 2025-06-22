@@ -5,50 +5,60 @@ var cookieParser = require("cookie-parser");
 var session = require("express-session");
 var logger = require("morgan");
 const mongoose = require("mongoose");
+
 var app = express();
 const port = parseInt(process.env.PORT) || 3000;
 
+// Kiểm tra biến môi trường DB_URL
 const urlConnect = process.env.DB_URL;
+if (!urlConnect) {
+    console.error("❌ Lỗi: DB_URL chưa được khai báo trong biến môi trường.");
+    process.exit(1); // Dừng ứng dụng
+}
 
-// Connect to database
-mongoose.connect(urlConnect, { useNewUrlParser: true, useUnifiedTopology: true }, err => {
-    if (err) throw err;
-    console.log("Connect database successfullyy!!");
+// Kết nối MongoDB
+mongoose.connect(urlConnect, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+}).then(() => {
+    console.log("✅ Kết nối database thành công!");
+}).catch(err => {
+    console.error("❌ Lỗi kết nối database:", err.message);
+    process.exit(1);
 });
 
-// start session
+// Khởi tạo session
 app.use(session({
     resave: false,
     saveUninitialized: true,
-    secret: process.env.SECRET_KEY,
+    secret: process.env.SECRET_KEY || 'defaultsecret',
     cookie: {
         maxAge: 86400000,
         httpOnly: false
     }
 }));
 
-// view engine setup
+// Cấu hình view engine
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
 
-// logging
+// Middleware logging + request parsing
 app.use(logger("dev"));
-
-// Handle form-urlencoded request
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
-// route setup
+// Khai báo các route
 var indexRouter = require("./routes/index");
-app.use(indexRouter);
-
 var adminRouter = require("./routes/admin");
-app.use(adminRouter);
-
 var ticketRouter = require("./routes/ticket");
+
+app.use(indexRouter);
+app.use(adminRouter);
 app.use(ticketRouter);
 
+// Khởi động server
 app.listen(port, () => {
-    console.log(`[+] Running level6 on port ${port}, root: "${__dirname}"`);
+    console.log(`[+] Running Level 6 on port ${port}, root: "${__dirname}"`);
 });
 
 module.exports = app;
